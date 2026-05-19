@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Placement Text</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:            #ffffff;
+    --bg-2:          #f5f5f5;
+    --bg-3:          #ebebeb;
+    --border:        #e0e0e0;
+    --text:          #1e1e1e;
+    --text-2:        #666666;
+    --text-3:        #999999;
+    --accent:        #0d99ff;
+    --accent-bg:     #e5f4ff;
+    --chip-bg:       #ebebeb;
+    --seg-bg:        #ebebeb;
+    --seg-active-bg: #ffffff;
+    --preview-bg:    #f5f5f5;
+    --radius:        6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:            #2c2c2c;
+      --bg-2:          #383838;
+      --bg-3:          #444444;
+      --border:        #4a4a4a;
+      --text:          #e6e6e6;
+      --text-2:        #999999;
+      --text-3:        #606060;
+      --accent-bg:     #0d3352;
+      --chip-bg:       #444444;
+      --seg-bg:        #1e1e1e;
+      --seg-active-bg: #383838;
+      --preview-bg:    #1e1e1e;
+    }
+  }
+
+  body { font-family: "Inter", system-ui, -apple-system, sans-serif; font-size: 12px; color: var(--text); background: var(--bg); overflow: hidden; }
+
+  /* ─── Navigation container ──────────────────────────── */
+  #navContainer {
+    display: flex;
+    width: 680px; /* two 340px screens side-by-side */
+    transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  #navContainer.at-detail { transform: translateX(-340px); }
+  .screen { width: 340px; flex-shrink: 0; }
+
+  /* ─── HOME: Search ──────────────────────────────────── */
+  .search-wrap {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .search-field {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bg-2);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0 10px;
+    transition: border-color 0.15s;
+  }
+  .search-field:focus-within { border-color: var(--accent); background: var(--bg); }
+  .search-icon { color: var(--text-3); flex-shrink: 0; }
+  #searchInput {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 7px 0;
+    outline: none;
+  }
+  #searchInput::placeholder { color: var(--text-3); }
+
+  /* ─── HOME: layout ─────────────────────────────────── */
+  #screenHome { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ─── HOME: Category list ───────────────────────────── */
+  #catList { display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
+  #catList::-webkit-scrollbar { width: 4px; }
+  #catList::-webkit-scrollbar-track { background: transparent; }
+  #catList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .cat-item {
+    display: flex;
+    align-items: center;
+    padding: 11px 14px;
+    gap: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    user-select: none;
+  }
+  .cat-item:last-child { border-bottom: none; }
+  .cat-item:hover:not(.disabled) { background: var(--bg-2); }
+  .cat-item:active:not(.disabled) { background: var(--bg-3); }
+  .cat-item.disabled { cursor: default; opacity: 0.42; }
+  .cat-item.no-match { display: none; }
+
+  .cat-icon {
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    color: var(--text);
+  }
+  .drag-handle {
+    width: 16px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-3);
+    cursor: grab;
+    flex-shrink: 0;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .cat-item:hover .drag-handle { color: var(--text-2); }
+  .cat-item.dragging { opacity: 0.4; }
+  .cat-item.drag-over { background: var(--accent-bg); }
+  .cat-content { flex: 1; min-width: 0; }
+  .cat-name { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .cat-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .cat-badge {
+    font-size: 10px; font-weight: 600; color: var(--text-3);
+    background: var(--bg-3); padding: 1px 5px; border-radius: 8px;
+  }
+  .cat-chevron { color: var(--text-3); display: flex; align-items: center; }
+  .no-results {
+    padding: 28px 14px;
+    text-align: center;
+    color: var(--text-3);
+    font-size: 12px;
+    display: none;
+  }
+  .no-results.visible { display: block; }
+
+  /* ─── DETAIL: layout ───────────────────────────────── */
+  #screenDetail { display: flex; flex-direction: column; height: 100vh; }
+
+  /* ─── DETAIL: Header ────────────────────────────────── */
+  .detail-header {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 14px 0 8px;
+    border-bottom: 1px solid var(--border);
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .btn-back {
+    width: 32px; height: 32px;
+    border: none; background: none;
+    cursor: pointer;
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 6px;
+    transition: background 0.1s;
+    flex-shrink: 0;
+  }
+  .btn-back:hover { background: var(--accent-bg); }
+  .detail-title { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  /* ─── DETAIL: Body ──────────────────────────────────── */
+  .body { padding: 14px; display: flex; flex-direction: column; gap: 13px; overflow-y: auto; flex: 1; }
+  .panel { display: flex; flex-direction: column; gap: 13px; }
+
+  /* ─── Field group ───────────────────────────────────── */
+  .field-group { display: flex; flex-direction: column; gap: 5px; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--text-2); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* ─── Text input ────────────────────────────────────── */
+  .text-input {
+    width: 100%; padding: 6px 9px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text);
+    font-family: "SF Mono", "Fira Code", "Menlo", monospace; font-size: 12px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .text-input:focus { border-color: var(--accent); background: var(--bg); }
+  .text-input::placeholder { color: var(--text-3); }
+
+  /* ─── Chips ─────────────────────────────────────────── */
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    padding: 2px 7px; background: var(--chip-bg); color: var(--text);
+    border-radius: 4px; font-family: "SF Mono", "Fira Code", "Menlo", monospace;
+    font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid transparent;
+    user-select: none; transition: background 0.1s, border-color 0.1s, color 0.1s;
+  }
+  .chip:hover  { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .chip:active { opacity: 0.65; }
+  .chip.disabled { opacity: 0.32; pointer-events: none; }
+
+  /* ─── Segmented control ─────────────────────────────── */
+  .seg { display: inline-flex; background: var(--seg-bg); border-radius: var(--radius); padding: 3px; gap: 2px; }
+  .seg-btn {
+    padding: 5px 12px; font-size: 12px; font-weight: 500;
+    color: var(--text-2); border-radius: 4px; cursor: pointer;
+    user-select: none; white-space: nowrap;
+    transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+  }
+  .seg-btn.active { background: var(--seg-active-bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+  /* ─── Stepper ───────────────────────────────────────── */
+  .stepper { display: inline-flex; align-items: center; background: var(--seg-bg); border-radius: var(--radius); padding: 3px; gap: 2px; width: 100%; }
+  .stepper-btn {
+    width: 34px; height: 30px; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 300; color: var(--text-2);
+    background: transparent; border: none; border-radius: 4px;
+    cursor: pointer; user-select: none; transition: background 0.1s, color 0.1s; flex-shrink: 0;
+  }
+  .stepper-btn:hover:not(:disabled) { background: var(--seg-active-bg); color: var(--text); }
+  .stepper-btn:active:not(:disabled) { opacity: 0.6; }
+  .stepper-btn:disabled { opacity: 0.28; cursor: default; }
+  .stepper-val { flex: 1; text-align: center; font-size: 14px; font-weight: 600; color: var(--text); background: var(--seg-active-bg); border-radius: 4px; padding: 5px 0; box-shadow: 0 1px 3px rgba(0,0,0,.1); user-select: none; }
+  input.stepper-val { border: none; outline: none; font-family: inherit; cursor: text; user-select: text; -moz-appearance: textfield; }
+  input.stepper-val::-webkit-inner-spin-button, input.stepper-val::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* ─── Two-col grid ──────────────────────────────────── */
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ─── Seg grid (2-col button grid) ─────────────────── */
+  .seg-grid { display: grid; grid-template-columns: 1fr 1fr; background: var(--seg-bg); border-radius: var(--radius); padding: 3px; gap: 2px; }
+  .seg-grid .seg-btn { text-align: center; }
+
+  /* ─── Select ────────────────────────────────────────── */
+  .select-wrap { position: relative; }
+  .select-wrap::after { content: "▾"; position: absolute; right: 9px; top: 50%; transform: translateY(-50%); font-size: 11px; color: var(--text-2); pointer-events: none; }
+  select { width: 100%; padding: 6px 26px 6px 9px; background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: inherit; font-size: 12px; appearance: none; outline: none; cursor: pointer; transition: border-color 0.15s; }
+  select:focus { border-color: var(--accent); }
+
+  /* ─── Divider ───────────────────────────────────────── */
+  .divider { height: 1px; background: var(--border); margin: 0 -14px; }
+
+  /* ─── Preview ───────────────────────────────────────── */
+  .preview-box { background: var(--preview-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; min-height: 40px; }
+  .preview-line { font-size: 13px; color: var(--text); line-height: 1.65; }
+  .preview-line.muted { color: var(--text-3); font-style: italic; font-size: 12px; }
+  .preview-more { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .fmt-hint { font-size: 11px; color: var(--text-3); }
+
+  /* ─── Status ────────────────────────────────────────── */
+  .status { font-size: 11px; color: var(--text-2); text-align: center; }
+  .status .count { color: var(--accent); font-weight: 600; }
+
+  /* ─── Buttons ───────────────────────────────────────── */
+  .btn { width: 100%; padding: 8px 0; font-size: 12px; font-weight: 600; border: none; border-radius: var(--radius); cursor: pointer; transition: opacity 0.15s; letter-spacing: 0.01em; }
+  .btn:disabled { opacity: 0.35; cursor: default; }
+  .btn-primary   { background: var(--accent); color: #fff; }
+  .btn-primary:not(:disabled):hover  { opacity: 0.88; }
+  .btn-primary:not(:disabled):active { opacity: 0.72; }
+  .btn-secondary { background: var(--bg-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:not(:disabled):hover  { border-color: var(--accent); color: var(--accent); }
+  .btn-secondary:not(:disabled):active { opacity: 0.72; }
+
+  /* ─── Hidden ────────────────────────────────────────── */
+  .hidden { display: none !important; }
+
+  /* ─── Resize handle ────────────────────────────────── */
+  #resizeHandle {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 6px;
+    cursor: ns-resize; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #resizeHandle::after {
+    content: ''; display: block;
+    width: 32px; height: 3px; border-radius: 2px;
+    background: var(--border);
+    transition: background 0.15s;
+  }
+  #resizeHandle:hover::after { background: var(--accent); }
+
+  /* ─── Toast ─────────────────────────────────────────── */
+  .toast { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%) translateY(36px); background: #1e1e1e; color: #fff; font-size: 11px; padding: 5px 12px; border-radius: 20px; white-space: nowrap; opacity: 0; transition: opacity 0.18s, transform 0.18s; pointer-events: none; z-index: 100; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="navContainer">
+
+  <!-- ══════════════════════════════════════════════════
+       SCREEN 1 — HOME
+  ══════════════════════════════════════════════════ -->
+  <div id="screenHome" class="screen">
+
+    <!-- Search -->
+    <div class="search-wrap">
+      <div class="search-field">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="5.8" cy="5.8" r="4" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M9 9L12 12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <input id="searchInput" type="text" placeholder="Search categories…" autocomplete="off" spellcheck="false" />
+      </div>
+    </div>
+
+    <!-- Category list -->
+    <div id="catList">
+
+      <div class="cat-item" data-cat="datetime" data-name="date time timestamps" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.5" width="14" height="12" rx="1.5"/><path d="M2 7.5h14M5.5 2v3M12.5 2v3"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Date &amp; Time</div>
+          <div class="cat-desc">Dates, times, and timestamps</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-item" data-cat="username" data-name="username random string characters" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="3"/><path d="M12 9c0 2.5 1.5 3.5 2.5 3.5S16 11.5 16 9a7 7 0 1 0-2.78 5.6"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Username</div>
+          <div class="cat-desc">Random character strings</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-item" data-cat="name" data-name="name first last person" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6.5" r="3.5"/><path d="M2.5 17c0-3.59 2.91-6.5 6.5-6.5s6.5 2.91 6.5 6.5"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Name</div>
+          <div class="cat-desc">First and last names</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-item" data-cat="address" data-name="address street city location zip state" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1.5A5.5 5.5 0 0 1 14.5 7c0 3.5-5.5 9.5-5.5 9.5S3.5 10.5 3.5 7A5.5 5.5 0 0 1 9 1.5z"/><circle cx="9" cy="7" r="2"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Address</div>
+          <div class="cat-desc">Street addresses and cities</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-item" data-cat="phone" data-name="phone number mobile cell telephone" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="1.5" width="8" height="15" rx="1.5"/><circle cx="9" cy="13.5" r="0.8" fill="currentColor" stroke="none"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Phone</div>
+          <div class="cat-desc">Phone numbers with formatting</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-item" data-cat="email" data-name="email address inbox mail" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4.5" width="14" height="10" rx="1.5"/><path d="M2 6l7 4.5 7-4.5"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Email</div>
+          <div class="cat-desc">Random email addresses</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-item" data-cat="number" data-name="number numeric integer float currency" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 3l-2 12M13.5 3l-2 12M3.5 7h11M3 11h11"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Number</div>
+          <div class="cat-desc">Formatted numbers and ranges</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+      <div class="cat-item" data-cat="lorem" data-name="lorem ipsum placeholder dummy text paragraph sentence word" draggable="true">
+        <div class="drag-handle"><svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="3" r="1.25"/><circle cx="7" cy="3" r="1.25"/><circle cx="3" cy="7" r="1.25"/><circle cx="7" cy="7" r="1.25"/><circle cx="3" cy="11" r="1.25"/><circle cx="7" cy="11" r="1.25"/></svg></div>
+        <div class="cat-icon"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 5h12M3 8.5h12M3 12h8.5M3 15.5h5.5"/></svg></div>
+        <div class="cat-content">
+          <div class="cat-name">Lorem Ipsum</div>
+          <div class="cat-desc">Placeholder text by word, sentence, or paragraph</div>
+        </div>
+        <div class="cat-chevron">
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+
+    </div><!-- /#catList -->
+
+    <div class="no-results" id="noResults">No categories match your search</div>
+
+  </div><!-- /#screenHome -->
+
+
+  <!-- ══════════════════════════════════════════════════
+       SCREEN 2 — DETAIL
+  ══════════════════════════════════════════════════ -->
+  <div id="screenDetail" class="screen">
+
+    <!-- Header -->
+    <div class="detail-header">
+      <button class="btn-back" id="btnBack" title="Back">
+        <svg width="8" height="14" viewBox="0 0 8 14" fill="none">
+          <path d="M7 1L1 7L7 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div class="detail-title" id="detailTitle">Date &amp; Time</div>
+    </div>
+
+    <div class="body">
+
+      <!-- ── Date & Time panel ───────────────────────── -->
+      <div id="panelDatetime" class="panel">
+
+        <!-- ─ Date section ─────────────────────────── -->
+        <div class="field-group">
+          <div class="field-label">Date Format</div>
+          <input id="dateFmt" class="text-input" type="text"
+                 value="MM/DD/YYYY" placeholder="e.g. MM/DD/YYYY — leave blank to omit"
+                 spellcheck="false" autocomplete="off" />
+          <div class="chips">
+            <span class="chip" data-target="dateFmt" data-token="MM">MM</span>
+            <span class="chip" data-target="dateFmt" data-token="DD">DD</span>
+            <span class="chip" data-target="dateFmt" data-token="YYYY">YYYY</span>
+            <span class="chip" data-target="dateFmt" data-token="YY">YY</span>
+            <span class="chip" data-target="dateFmt" data-token="MMM">MMM</span>
+            <span class="chip" data-target="dateFmt" data-token="MMMM">MMMM</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Date Zeros</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnPadOn"  style="flex:1;text-align:center">04/03</div>
+            <div class="seg-btn"        id="btnPadOff" style="flex:1;text-align:center">4/3</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ─ Spread ───────────────────────────────── -->
+        <div class="field-group">
+          <div class="field-label">Spread</div>
+          <div class="row-2">
+            <input id="spreadNum" class="text-input" type="number" min="1" max="10" value="1" />
+            <div class="select-wrap">
+              <select id="spreadUnit">
+                <option value="days">Days</option>
+                <option value="weeks">Weeks</option>
+                <option value="months" selected>Months</option>
+                <option value="years">Years</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─ Time section ─────────────────────────── -->
+        <div class="field-group">
+          <div class="field-label">Time Format</div>
+          <input id="timeFmt" class="text-input" type="text"
+                 value="HH:MM:SS" placeholder="e.g. HH:MM — leave blank to omit"
+                 spellcheck="false" autocomplete="off" />
+          <div class="chips">
+            <span class="chip" data-target="timeFmt" data-token="HH">HH</span>
+            <span class="chip" data-target="timeFmt" data-token="MM">MM</span>
+            <span class="chip" data-target="timeFmt" data-token="SS">SS</span>
+            <span id="ampmChip" class="chip disabled" data-target="timeFmt" data-token="A">A</span>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Hour Zero</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnTimePadOn"  style="flex:1;text-align:center">03</div>
+            <div class="seg-btn"        id="btnTimePadOff" style="flex:1;text-align:center">3</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Clock</div>
+          <div class="seg">
+            <div class="seg-btn active" id="btn24h">24h</div>
+            <div class="seg-btn"        id="btnAmpm">AM/PM</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- ─ Order (only when 2+ nodes selected) ──── -->
+        <div id="multiSection" class="hidden" style="display:flex;flex-direction:column;gap:13px">
+          <div class="field-group">
+            <div class="field-label">Order</div>
+            <div class="seg" style="width:100%">
+              <div class="seg-btn active" id="btnAsc"  style="flex:1;text-align:center">↑ Asc</div>
+              <div class="seg-btn"        id="btnDesc" style="flex:1;text-align:center">↓ Desc</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /#panelDatetime -->
+
+      <!-- ── Username panel ──────────────────────────── -->
+      <div id="panelUsername" class="panel hidden">
+
+        <div class="field-group">
+          <div class="field-label">Character Length</div>
+          <div class="stepper">
+            <button class="stepper-btn" id="btnLenDec">−</button>
+            <div    class="stepper-val" id="lenDisplay">8</div>
+            <button class="stepper-btn" id="btnLenInc">+</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Format</div>
+          <input id="usernameFmt" class="text-input" type="text"
+                 value="AAAAAAAA" placeholder="e.g. Aa-###  or  A_a_A"
+                 spellcheck="false" autocomplete="off" />
+          <div class="chips">
+            <span class="chip" data-target="usernameFmt" data-token="a">a — lowercase</span>
+            <span class="chip" data-target="usernameFmt" data-token="A">A — uppercase</span>
+            <span class="chip" data-target="usernameFmt" data-token="#"># — number</span>
+          </div>
+          <div class="fmt-hint" id="countHint">8 letters</div>
+        </div>
+
+      </div><!-- /#panelUsername -->
+
+      <!-- ── Name panel ─────────────────────────────── -->
+      <div id="panelName" class="panel hidden">
+
+        <div class="field-group">
+          <div class="field-label">Name Part</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnFirst"  style="flex:1;text-align:center">First</div>
+            <div class="seg-btn"        id="btnLast"   style="flex:1;text-align:center">Last</div>
+            <div class="seg-btn"        id="btnBoth"   style="flex:1;text-align:center">Both</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Gender</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnGenderMix"    style="flex:1;text-align:center">Mix</div>
+            <div class="seg-btn"        id="btnGenderMale"   style="flex:1;text-align:center">Male</div>
+            <div class="seg-btn"        id="btnGenderFemale" style="flex:1;text-align:center">Female</div>
+          </div>
+        </div>
+
+      </div><!-- /#panelName -->
+
+      <!-- ── Address panel ──────────────────────────── -->
+      <div id="panelAddress" class="panel hidden">
+
+        <div class="field-group">
+          <div class="field-label">Address Part</div>
+          <div class="seg-grid">
+            <div class="seg-btn active" id="btnAddrFull"   >Full Address</div>
+            <div class="seg-btn"        id="btnAddrStreet" >Street Address</div>
+            <div class="seg-btn"        id="btnAddrCity"   >City</div>
+            <div class="seg-btn"        id="btnAddrState"  >State</div>
+            <div class="seg-btn"        id="btnAddrZip"    >Zip Code</div>
+          </div>
+        </div>
+
+      </div><!-- /#panelAddress -->
+
+      <!-- ── Email panel ────────────────────────────── -->
+      <div id="panelEmail" class="panel hidden">
+
+        <div class="field-group">
+          <div class="field-label">Name Format</div>
+          <div class="seg-grid">
+            <div class="seg-btn active" id="btnEmailRandom"   >Random</div>
+            <div class="seg-btn"        id="btnEmailFirst"    >First</div>
+            <div class="seg-btn"        id="btnEmailLast"     >Last</div>
+            <div class="seg-btn"        id="btnEmailCombined" >First + Last</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Domain <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3)">(leave blank for random)</span></div>
+          <input id="emailDomain" class="text-input" type="text"
+                 placeholder="e.g. mycompany.com"
+                 spellcheck="false" autocomplete="off" />
+        </div>
+
+      </div><!-- /#panelEmail -->
+
+      <!-- ── Number panel ───────────────────────────── -->
+      <div id="panelNumber" class="panel hidden">
+
+        <!-- Mode -->
+        <div class="field-group">
+          <div class="field-label">Mode</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnNumDigitsMode" style="flex:1;text-align:center">Digits</div>
+            <div class="seg-btn"        id="btnNumRangeMode"  style="flex:1;text-align:center">Range</div>
+          </div>
+        </div>
+
+        <!-- Digits length stepper -->
+        <div class="field-group" id="numDigitsSection">
+          <div class="field-label">Length</div>
+          <div class="stepper">
+            <button class="stepper-btn" id="btnNumDigitsDec">−</button>
+            <div    class="stepper-val" id="numDigitsDisplay">4</div>
+            <button class="stepper-btn" id="btnNumDigitsInc">+</button>
+          </div>
+        </div>
+
+        <!-- Range min / max -->
+        <div class="row-2 hidden" id="numRangeSection">
+          <div class="field-group">
+            <div class="field-label">Min</div>
+            <input id="numMin" class="text-input" type="number" placeholder="0" />
+          </div>
+          <div class="field-group">
+            <div class="field-label">Max</div>
+            <input id="numMax" class="text-input" type="number" placeholder="1000" />
+          </div>
+        </div>
+
+        <!-- Prefix / Suffix -->
+        <div class="row-2">
+          <div class="field-group">
+            <div class="field-label">Prefix</div>
+            <input id="numPrefixInput" class="text-input" type="text" placeholder="$" spellcheck="false" />
+          </div>
+          <div class="field-group">
+            <div class="field-label">Suffix</div>
+            <input id="numSuffixInput" class="text-input" type="text" placeholder="%" spellcheck="false" />
+          </div>
+        </div>
+
+        <!-- Whole / Decimal -->
+        <div class="field-group">
+          <div class="field-label">Type</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnNumWhole"   style="flex:1;text-align:center">Whole</div>
+            <div class="seg-btn"        id="btnNumDecimal" style="flex:1;text-align:center">Decimal</div>
+          </div>
+        </div>
+
+        <!-- Thousands separator -->
+        <div class="field-group">
+          <div class="field-label">Thousands Separator</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnNumCommasOn"  style="flex:1;text-align:center">1,000</div>
+            <div class="seg-btn"        id="btnNumCommasOff" style="flex:1;text-align:center">1000</div>
+          </div>
+        </div>
+
+        <!-- Order -->
+        <div class="field-group">
+          <div class="field-label">Order</div>
+          <div class="seg" style="width:100%">
+            <div class="seg-btn active" id="btnNumOrderRandom" style="flex:1;text-align:center">Random</div>
+            <div class="seg-btn"        id="btnNumOrderAsc"    style="flex:1;text-align:center">Ascending</div>
+            <div class="seg-btn"        id="btnNumOrderDesc"   style="flex:1;text-align:center">Descending</div>
+          </div>
+        </div>
+
+        <!-- Decimal places (shown only when Decimal selected) -->
+        <div class="field-group hidden" id="numDecimalSection">
+          <div class="field-label">Decimal Places</div>
+          <div class="stepper">
+            <button class="stepper-btn" id="btnDecPlacesDec">−</button>
+            <div    class="stepper-val" id="decPlacesDisplay">2</div>
+            <button class="stepper-btn" id="btnDecPlacesInc">+</button>
+          </div>
+        </div>
+
+      </div><!-- /#panelNumber -->
+
+      <!-- ── Phone panel ────────────────────────────── -->
+      <div id="panelPhone" class="panel hidden">
+
+        <div class="field-group">
+          <div class="field-label">Format</div>
+          <div class="seg-grid">
+            <div class="seg-btn active" id="btnPhoneParens" >(555) 867-5309</div>
+            <div class="seg-btn"        id="btnPhoneDashes" >555-867-5309</div>
+            <div class="seg-btn"        id="btnPhoneDots"   >555.867.5309</div>
+            <div class="seg-btn"        id="btnPhonePlain"  >5558675309</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Prefix <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3)">(optional)</span></div>
+          <input id="phonePrefixInput" class="text-input" type="text"
+                 placeholder="+1" spellcheck="false" autocomplete="off" />
+        </div>
+
+      </div><!-- /#panelPhone -->
+
+      <!-- ── Lorem Ipsum panel ─────────────────────── -->
+      <div id="panelLorem" class="panel hidden">
+
+        <div class="field-group">
+          <div class="field-label">Count</div>
+          <div class="stepper">
+            <button class="stepper-btn" id="btnLoremCountDec">−</button>
+            <input  class="stepper-val" id="loremCountDisplay" type="number" value="50" />
+            <button class="stepper-btn" id="btnLoremCountInc">+</button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-label">Unit</div>
+          <div class="seg-grid">
+            <div class="seg-btn"        id="btnLoremChars">Characters</div>
+            <div class="seg-btn active" id="btnLoremWords">Words</div>
+            <div class="seg-btn"        id="btnLoremSents">Sentences</div>
+            <div class="seg-btn"        id="btnLoremParas">Paragraphs</div>
+          </div>
+        </div>
+
+      </div><!-- /#panelLorem -->
+
+      <!-- ── Shared: preview + actions ──────────────── -->
+      <div class="divider"></div>
+
+      <div class="field-group">
+        <div class="field-label">Preview</div>
+        <div class="preview-box" id="previewBox">
+          <div class="preview-line muted" id="previewEmpty">Configure options above</div>
+        </div>
+      </div>
+
+      <div class="status" id="status">No text layers selected</div>
+      <button class="btn btn-primary hidden"   id="btnReplace">Replace Selected Text</button>
+      <button class="btn btn-secondary"        id="btnInsert" >Insert New Text</button>
+
+    </div><!-- /.body -->
+  </div><!-- /#screenDetail -->
+
+</div><!-- /#navContainer -->
+
+<div class="toast" id="toast"></div>
+<div id="resizeHandle"></div>
+
+<script>
+// ─── Category metadata ────────────────────────────────────────────────────────
+const CAT_NAMES = { datetime: 'Date & Time', username: 'Username', name: 'Name', address: 'Address', phone: 'Phone', email: 'Email', number: 'Number', lorem: 'Lorem Ipsum' };
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let activeCategory = 'datetime';
+let is24h          = true;
+let isAscending    = true;
+let datePadZeros   = true;  // leading zeros on month/day
+let timePadZeros   = true;  // leading zero on hour
+const MAX_LEN      = 32;
+let selectedNodeIds = [];
+let onHomeScreen    = true;
+let namePart        = 'first';  // 'first' | 'last' | 'both'
+let nameGender      = 'mix';    // 'mix' | 'male' | 'female'
+let addressPart     = 'full';   // 'full' | 'street' | 'city' | 'state' | 'zip'
+let emailNameFormat = 'random'; // 'random' | 'first' | 'last' | 'combined'
+let phoneFormat     = 'parens'; // 'parens' | 'dashes' | 'dots' | 'plain'
+let numMode         = 'digits'; // 'digits' | 'range'
+let numDigits       = 4;        // 1–12
+let numType         = 'whole';  // 'whole' | 'decimal'
+let numDecimals     = 2;        // 0–6
+let numCommas       = true;     // thousands separator on by default
+let numOrder        = 'random'; // 'random' | 'ascending' | 'descending'
+let loremUnit  = 'words';       // 'characters' | 'words' | 'sentences' | 'paragraphs'
+let loremCount = 50;
+const LOREM_UNIT_DEFAULTS = { characters: 100, words: 50, sentences: 3, paragraphs: 1 };
+const LOREM_UNIT_MINS     = { characters: 10,  words: 1,  sentences: 1, paragraphs: 1 };
+const LOREM_UNIT_MAXES    = { characters: 500, words: 200, sentences: 10, paragraphs: 5 };
+
+// ─── Month names ──────────────────────────────────────────────────────────────
+const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ─── Date formatting ──────────────────────────────────────────────────────────
+function applyDateFormat(fmt, d) {
+  if (!fmt.trim()) return '';
+  return fmt
+    .replace(/MMMM/g, MONTHS_LONG[d.getMonth()])
+    .replace(/MMM/g,  MONTHS_SHORT[d.getMonth()])
+    .replace(/YYYY/g, String(d.getFullYear()))
+    .replace(/YY/g,   String(d.getFullYear()).slice(-2))
+    .replace(/MM/g,   datePadZeros ? String(d.getMonth() + 1).padStart(2, '0') : String(d.getMonth() + 1))
+    .replace(/DD/g,   datePadZeros ? String(d.getDate()).padStart(2, '0')      : String(d.getDate()));
+}
+function applyTimeFormat(fmt, d, use24h) {
+  if (!fmt.trim()) return '';
+  const h24 = d.getHours(), h12 = h24 % 12 || 12;
+  return fmt
+    .replace(/HH/g, timePadZeros ? String(use24h ? h24 : h12).padStart(2, '0') : String(use24h ? h24 : h12))
+    .replace(/MM/g, String(d.getMinutes()).padStart(2, '0'))
+    .replace(/SS/g, String(d.getSeconds()).padStart(2, '0'))
+    .replace(/A/g,  h24 < 12 ? 'AM' : 'PM');
+}
+function formatDateTime(d) {
+  return [applyDateFormat(dateFmtEl.value, d), applyTimeFormat(timeFmtEl.value, d, is24h)]
+    .filter(Boolean).join(' ');
+}
+
+// ─── Phone generation ─────────────────────────────────────────────────────────
+function generatePhone() {
+  const rnd3 = () => String(Math.floor(Math.random() * 800) + 200);
+  const rnd4 = () => String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+  const area = rnd3(), exch = rnd3(), sub = rnd4();
+  let formatted;
+  switch (phoneFormat) {
+    case 'dashes': formatted = `${area}-${exch}-${sub}`; break;
+    case 'dots':   formatted = `${area}.${exch}.${sub}`; break;
+    case 'plain':  formatted = `${area}${exch}${sub}`;   break;
+    default:       formatted = `(${area}) ${exch}-${sub}`;
+  }
+  const pre = document.getElementById('phonePrefixInput').value.trim();
+  return pre ? `${pre} ${formatted}` : formatted;
+}
+
+// ─── Number generation ────────────────────────────────────────────────────────
+function generateRawNumber() {
+  if (numMode === 'range') {
+    const a = parseFloat(document.getElementById('numMin').value);
+    const b = parseFloat(document.getElementById('numMax').value);
+    const lo = isNaN(a) ? 0    : Math.min(a, isNaN(b) ? a + 1000 : b);
+    const hi = isNaN(b) ? 1000 : Math.max(a, b);
+    return Math.random() * (hi - lo) + lo;
+  } else {
+    const lo = numDigits === 1 ? 0 : Math.pow(10, numDigits - 1);
+    const hi = Math.pow(10, numDigits) - 1;
+    let num = Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    if (numType === 'decimal') num += Math.random();
+    return num;
+  }
+}
+
+function formatNumber(num) {
+  const formatted = numType === 'decimal'
+    ? (numCommas ? num.toLocaleString('en-US', { minimumFractionDigits: numDecimals, maximumFractionDigits: numDecimals }) : num.toFixed(numDecimals))
+    : (numCommas ? Math.round(num).toLocaleString('en-US') : String(Math.round(num)));
+  const pre = document.getElementById('numPrefixInput').value;
+  const suf = document.getElementById('numSuffixInput').value;
+  return `${pre}${formatted}${suf}`;
+}
+
+function generateNumber() {
+  return formatNumber(generateRawNumber());
+}
+
+// ─── Email data & generation ──────────────────────────────────────────────────
+const EMAIL_DOMAINS = ['mailhub.net','inboxly.com','fastpost.io','webmail.co','postbox.org','cloudmail.net','quickmail.com','easypost.io','nextmail.org','sendbox.com','mailable.net','postify.io','inboxr.com','mailstream.net','swiftmail.co'];
+function generateEmail() {
+  const allFirst = [...NAMES_MALE, ...NAMES_FEMALE];
+  const first = pickRandom(allFirst).toLowerCase();
+  const last  = pickRandom(NAMES_LAST).toLowerCase();
+  const num   = Math.floor(Math.random() * 99) + 1;
+  let local;
+  if (emailNameFormat === 'first') {
+    local = pickRandom([first, `${first}${num}`, `${first}.${num}`]);
+  } else if (emailNameFormat === 'last') {
+    local = pickRandom([last, `${last}${num}`, `${last}.${num}`]);
+  } else if (emailNameFormat === 'combined') {
+    local = `${first}.${last}`;
+  } else {
+    local = pickRandom([`${first}.${last}`, `${first[0]}.${last}`, `${first}${last[0]}`, `${first}_${last}`, `${first[0]}${last}`, `${first}.${last}${num}`, `${first}${num}`, first, last]);
+  }
+  const customDomain = document.getElementById('emailDomain').value.trim();
+  const domain = customDomain || pickRandom(EMAIL_DOMAINS);
+  return `${local}@${domain}`;
+}
+
+// ─── Address data & generation ───────────────────────────────────────────────
+const ADDR_STREET_NAMES = ['Oak','Maple','Pine','Cedar','Elm','Washington','Jefferson','Lincoln','Park','Lake','River','Mill','Hill','Valley','Forest','Meadow','Spring','Sunset','Highland','Riverside','Brookside','Fairview','Greenwood','Lakewood','Maplewood','Birchwood','Pinecrest','Willowbrook','Stonegate','Clearwater','Ridgeway','Horizon','Cypress','Magnolia','Rosewood','Chestnut','Sycamore','Hawthorn','Juniper','Willow'];
+const ADDR_STREET_TYPES = ['Ave','St','Blvd','Dr','Ln','Rd','Way','Ct','Pl','Terr'];
+const ADDR_PLACES = [
+  {city:'New York',state:'New York',abbr:'NY',zip:'100'},
+  {city:'Los Angeles',state:'California',abbr:'CA',zip:'900'},
+  {city:'Chicago',state:'Illinois',abbr:'IL',zip:'606'},
+  {city:'Houston',state:'Texas',abbr:'TX',zip:'770'},
+  {city:'Phoenix',state:'Arizona',abbr:'AZ',zip:'850'},
+  {city:'Philadelphia',state:'Pennsylvania',abbr:'PA',zip:'191'},
+  {city:'San Antonio',state:'Texas',abbr:'TX',zip:'782'},
+  {city:'San Diego',state:'California',abbr:'CA',zip:'921'},
+  {city:'Dallas',state:'Texas',abbr:'TX',zip:'752'},
+  {city:'San Jose',state:'California',abbr:'CA',zip:'951'},
+  {city:'Austin',state:'Texas',abbr:'TX',zip:'787'},
+  {city:'Jacksonville',state:'Florida',abbr:'FL',zip:'322'},
+  {city:'Columbus',state:'Ohio',abbr:'OH',zip:'432'},
+  {city:'Charlotte',state:'North Carolina',abbr:'NC',zip:'282'},
+  {city:'Indianapolis',state:'Indiana',abbr:'IN',zip:'462'},
+  {city:'San Francisco',state:'California',abbr:'CA',zip:'941'},
+  {city:'Seattle',state:'Washington',abbr:'WA',zip:'981'},
+  {city:'Denver',state:'Colorado',abbr:'CO',zip:'802'},
+  {city:'Nashville',state:'Tennessee',abbr:'TN',zip:'372'},
+  {city:'Oklahoma City',state:'Oklahoma',abbr:'OK',zip:'731'},
+  {city:'Las Vegas',state:'Nevada',abbr:'NV',zip:'891'},
+  {city:'Louisville',state:'Kentucky',abbr:'KY',zip:'402'},
+  {city:'Memphis',state:'Tennessee',abbr:'TN',zip:'381'},
+  {city:'Portland',state:'Oregon',abbr:'OR',zip:'972'},
+  {city:'Baltimore',state:'Maryland',abbr:'MD',zip:'212'},
+  {city:'Milwaukee',state:'Wisconsin',abbr:'WI',zip:'532'},
+  {city:'Albuquerque',state:'New Mexico',abbr:'NM',zip:'871'},
+  {city:'Tucson',state:'Arizona',abbr:'AZ',zip:'857'},
+  {city:'Atlanta',state:'Georgia',abbr:'GA',zip:'303'},
+  {city:'Kansas City',state:'Missouri',abbr:'MO',zip:'641'},
+  {city:'Raleigh',state:'North Carolina',abbr:'NC',zip:'276'},
+  {city:'Minneapolis',state:'Minnesota',abbr:'MN',zip:'554'},
+  {city:'Tampa',state:'Florida',abbr:'FL',zip:'336'},
+  {city:'New Orleans',state:'Louisiana',abbr:'LA',zip:'701'},
+  {city:'Cleveland',state:'Ohio',abbr:'OH',zip:'441'},
+  {city:'Sacramento',state:'California',abbr:'CA',zip:'958'},
+  {city:'Pittsburgh',state:'Pennsylvania',abbr:'PA',zip:'152'},
+  {city:'Salt Lake City',state:'Utah',abbr:'UT',zip:'841'},
+  {city:'Richmond',state:'Virginia',abbr:'VA',zip:'232'},
+  {city:'Boise',state:'Idaho',abbr:'ID',zip:'837'},
+];
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function generateAddress() {
+  const place     = pickRandom(ADDR_PLACES);
+  const streetNum = Math.floor(Math.random() * 9900) + 100;
+  const streetName = pickRandom(ADDR_STREET_NAMES);
+  const streetType = pickRandom(ADDR_STREET_TYPES);
+  const zip        = place.zip + String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  const streetAddr = `${streetNum} ${streetName} ${streetType}`;
+  switch (addressPart) {
+    case 'street':     return streetAddr;
+    case 'city':       return place.city;
+    case 'state':      return place.abbr;
+    case 'zip':        return zip;
+    default:           return `${streetAddr}\n${place.city}, ${place.abbr} ${zip}`;
+  }
+}
+
+// ─── Name data & generation ───────────────────────────────────────────────────
+const NAMES_MALE = ['Adam','Alex','Andrew','Benjamin','Blake','Brandon','Brian','Carlos','Chris','Daniel','David','Dylan','Ethan','Evan','Frank','Gabriel','George','Henry','Jack','Jacob','James','Jason','Jonathan','Joseph','Joshua','Justin','Kevin','Kyle','Liam','Lucas','Mark','Matthew','Michael','Nathan','Nicholas','Noah','Oliver','Patrick','Ryan','Samuel','Sean','Thomas','Tyler','Victor','William','Zachary'];
+const NAMES_FEMALE = ['Alexandra','Alice','Amanda','Amy','Anna','Ashley','Audrey','Ava','Brianna','Charlotte','Claire','Diana','Elizabeth','Emily','Emma','Grace','Hannah','Harper','Isabella','Jessica','Julia','Katherine','Laura','Lauren','Lily','Luna','Madison','Maria','Mia','Michelle','Morgan','Natalie','Nicole','Olivia','Rachel','Rebecca','Samantha','Sarah','Scarlett','Sofia','Sophia','Stephanie','Taylor','Victoria','Zoe'];
+const NAMES_LAST = ['Anderson','Baker','Brown','Campbell','Carter','Clark','Collins','Cooper','Davis','Edwards','Evans','Fisher','Foster','Garcia','Green','Hall','Harris','Hill','Jackson','Johnson','Jones','King','Lee','Lewis','Martin','Martinez','Miller','Mitchell','Moore','Morgan','Nelson','Parker','Patel','Phillips','Richardson','Roberts','Robinson','Rodriguez','Scott','Smith','Stewart','Taylor','Thomas','Thompson','Turner','Walker','Ward','Watson','White','Williams','Wilson','Wright','Young'];
+function generateName() {
+  const g = nameGender === 'mix' ? (Math.random() < 0.5 ? 'male' : 'female') : nameGender;
+  const pool = g === 'male' ? NAMES_MALE : NAMES_FEMALE;
+  const first = pool[Math.floor(Math.random() * pool.length)];
+  const last  = NAMES_LAST[Math.floor(Math.random() * NAMES_LAST.length)];
+  if (namePart === 'first') return first;
+  if (namePart === 'last')  return last;
+  return `${first} ${last}`;
+}
+
+// ─── Username generation ──────────────────────────────────────────────────────
+const LETTERS_LOWER = 'abcdefghijklmnopqrstuvwxyz';
+const LETTERS_UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const NUMBERS       = '0123456789';
+function countRandom(fmt) { return [...fmt].filter(c => c === 'a' || c === 'A' || c === '#').length; }
+function generateUsernameFromFormat(fmt) {
+  if (!fmt) return '';
+  return [...fmt].map(c => {
+    if (c === 'a') return LETTERS_LOWER[Math.floor(Math.random() * 26)];
+    if (c === 'A') return LETTERS_UPPER[Math.floor(Math.random() * 26)];
+    if (c === '#') return NUMBERS[Math.floor(Math.random() * 10)];
+    return c;
+  }).join('');
+}
+
+// ─── Lorem Ipsum data & generation ───────────────────────────────────────────
+const LOREM_PARAGRAPHS = [
+  "Taciti a mauris a bibendum a hendrerit eu senectus vel auctor lacinia cursus in iaculis quisque fames parturient. Vestibulum a est mi est consequat imperdiet adipiscing risus erat felis suspendisse per adipiscing massa nam. A tristique dui non vestibulum scelerisque vestibulum penatibus tellus suspendisse magna gravida magna nullam sem cursus cum montes a.",
+  "Parturient ac ultrices eros vestibulum id vitae lacinia sapien condimentum vestibulum tincidunt a mi dignissim. Sagittis lobortis integer non a vestibulum a posuere diam a iaculis felis ut parturient quis dui id convallis suspendisse cum id a parturient a penatibus malesuada at ut a. Vestibulum at laoreet consequat vestibulum scelerisque suspendisse a montes mi eu at eu arcu nisl mi inceptos.",
+  "Purus dictumst hendrerit bibendum natoque curae ac neque enim aptent augue a ac himenaeos aliquet arcu justo eu proin integer. Felis dui a dignissim congue suspendisse elit purus a suspendisse feugiat ut class ullamcorper mi faucibus primis gravida. Litora nec iaculis laoreet vitae adipiscing varius feugiat sit eget hac tempus sem amet blandit pulvinar scelerisque suspendisse ullamcorper a duis nam. Facilisis litora posuere interdum a elementum a a nisl egestas adipiscing mauris torquent netus euismod venenatis a hac class suspendisse lacus.",
+  "Enim in condimentum vestibulum felis donec elit blandit arcu a a orci varius urna suspendisse ridiculus massa etiam euismod montes nostra mi aliquet a. Erat cubilia eu tellus a tristique nibh mauris vestibulum posuere enim orci adipiscing a a inceptos vulputate vivamus ac aptent vel dictum eleifend inceptos fringilla orci parturient consequat. Magnis parturient potenti at vestibulum nulla in eros potenti scelerisque lacus vehicula a tortor quam odio facilisi suspendisse cras augue lacinia ultrices amet cursus a condimentum sagittis nec urna.",
+  "Fermentum a mauris aptent pulvinar penatibus id nec consectetur condimentum conubia venenatis arcu euismod primis penatibus quis lectus adipiscing taciti diam adipiscing fusce. Ac dictumst quisque ligula felis hendrerit ad condimentum sociis a parturient adipiscing sed elit at ac. Scelerisque adipiscing morbi eros dictum magnis vestibulum accumsan vestibulum ridiculus egestas consequat suspendisse convallis suspendisse suspendisse pharetra potenti nascetur ad sapien a etiam nunc. Duis facilisis morbi eleifend sit varius mollis condimentum imperdiet tincidunt erat nec nam pulvinar ultricies a penatibus inceptos ligula nibh nec fusce est eleifend a.",
+];
+const LOREM_SENTENCES = LOREM_PARAGRAPHS.flatMap(p => p.match(/[^.]+\./g) || []).map(s => s.trim());
+const LOREM_WORDS = LOREM_PARAGRAPHS.join(' ').replace(/\./g, '').split(/\s+/).filter(Boolean);
+
+function generateLorem() {
+  if (loremUnit === 'paragraphs') {
+    const start = Math.floor(Math.random() * LOREM_PARAGRAPHS.length);
+    const result = [];
+    for (let i = 0; i < loremCount; i++) result.push(LOREM_PARAGRAPHS[(start + i) % LOREM_PARAGRAPHS.length]);
+    return result.join('\n\n');
+  }
+  if (loremUnit === 'sentences') {
+    const start = Math.floor(Math.random() * LOREM_SENTENCES.length);
+    const result = [];
+    for (let i = 0; i < loremCount; i++) result.push(LOREM_SENTENCES[(start + i) % LOREM_SENTENCES.length]);
+    return result.join(' ');
+  }
+  if (loremUnit === 'words') {
+    const start = Math.floor(Math.random() * LOREM_WORDS.length);
+    const ws = [];
+    for (let i = 0; i < loremCount; i++) ws.push(LOREM_WORDS[(start + i) % LOREM_WORDS.length]);
+    const text = ws.join(' ');
+    return text.charAt(0).toUpperCase() + text.slice(1) + '.';
+  }
+  // characters
+  const full = LOREM_PARAGRAPHS.join(' ');
+  const maxStart = Math.max(0, full.length - loremCount);
+  const start = Math.floor(Math.random() * (maxStart + 1));
+  return full.slice(start, start + loremCount).trim();
+}
+
+// ─── Date range for multi-select ──────────────────────────────────────────────
+function generateDates(count, spreadDays, ascending) {
+  const now = Date.now(), ms = spreadDays * 86400000;
+  const stamps = Array.from({ length: count }, () => now - Math.random() * ms);
+  stamps.sort((a, b) => ascending ? a - b : b - a);
+  return stamps.map(ts => new Date(ts));
+}
+
+// ─── Build texts for insert / replace ────────────────────────────────────────
+function buildTexts(count) {
+  if (activeCategory === 'datetime') {
+    return generateDates(Math.max(count, 1), getSpreadDays(), isAscending)
+      .map(d => formatDateTime(d));
+  }
+  if (activeCategory === 'name') {
+    return Array.from({ length: Math.max(count, 1) }, generateName);
+  }
+  if (activeCategory === 'address') {
+    return Array.from({ length: Math.max(count, 1) }, generateAddress);
+  }
+  if (activeCategory === 'phone') {
+    return Array.from({ length: Math.max(count, 1) }, generatePhone);
+  }
+  if (activeCategory === 'email') {
+    return Array.from({ length: Math.max(count, 1) }, generateEmail);
+  }
+  if (activeCategory === 'number') {
+    const raws = Array.from({ length: Math.max(count, 1) }, generateRawNumber);
+    if (numOrder === 'ascending')  raws.sort((a, b) => a - b);
+    if (numOrder === 'descending') raws.sort((a, b) => b - a);
+    return raws.map(formatNumber);
+  }
+  if (activeCategory === 'lorem') {
+    return Array.from({ length: Math.max(count, 1) }, generateLorem);
+  }
+  const fmt = usernameFmtEl ? usernameFmtEl.value : 'AAAAAAAA';
+  return Array.from({ length: Math.max(count, 1) }, () => generateUsernameFromFormat(fmt));
+}
+
+// ─── Preview ──────────────────────────────────────────────────────────────────
+const previewBox   = document.getElementById('previewBox');
+const previewEmpty = document.getElementById('previewEmpty');
+
+function renderPreview() {
+  const n = Math.min(Math.max(selectedNodeIds.length, 1), 3);
+  const texts = buildTexts(n).filter(Boolean);
+
+  [...previewBox.querySelectorAll(':not(#previewEmpty)')].forEach(el => el.remove());
+
+  if (!texts.length) { previewEmpty.style.display = ''; return; }
+  previewEmpty.style.display = 'none';
+
+  texts.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'preview-line';
+    el.textContent = t;
+    previewBox.appendChild(el);
+  });
+  if (selectedNodeIds.length > 3) {
+    const more = document.createElement('div');
+    more.className = 'preview-more';
+    more.textContent = `… and ${selectedNodeIds.length - 3} more`;
+    previewBox.appendChild(more);
+  }
+}
+
+// ─── Update UI state ──────────────────────────────────────────────────────────
+const statusEl   = document.getElementById('status');
+const btnReplace = document.getElementById('btnReplace');
+const btnInsert  = document.getElementById('btnInsert');
+const multiSection = document.getElementById('multiSection');
+
+function updateUI() {
+  const count   = selectedNodeIds.length;
+  const hasText = !!buildTexts(1)[0];
+
+  statusEl.innerHTML = count === 0 ? 'No text layers selected'
+    : count === 1 ? '<span class="count">1</span> text layer selected'
+    : `<span class="count">${count}</span> text layers selected`;
+
+  const showMulti = activeCategory === 'datetime' && count >= 2;
+  multiSection.classList.toggle('hidden', !showMulti);
+
+  const showReplace = count >= 1 && hasText;
+  btnReplace.classList.toggle('hidden', !showReplace);
+  if (showReplace) {
+    btnReplace.textContent = count === 1 ? 'Replace Selected Text' : `Replace ${count} Text Layers`;
+  }
+  btnInsert.disabled = !hasText;
+
+  renderPreview();
+  if (!onHomeScreen) resizeDetail();
+}
+
+// ─── Window resize ────────────────────────────────────────────────────────────
+const HOME_H = 400; // search(56) + ~5.5 visible items — list scrolls for the rest
+
+function resizeHome() {
+  parent.postMessage({ pluginMessage: { type: 'resize', height: HOME_H } }, '*');
+}
+function resizeDetail() {
+  const count = selectedNodeIds.length;
+  let h;
+  if (activeCategory === 'datetime') {
+    h = 715;
+    if (count >= 2) h += 70; // order section
+    if (count >= 1) h += 41; // replace button
+  } else if (activeCategory === 'name') {
+    h = 380;
+    if (count >= 1) h += 41;
+  } else if (activeCategory === 'address') {
+    h = 365;
+    if (count >= 1) h += 41;
+  } else if (activeCategory === 'phone') {
+    h = 370;
+    if (count >= 1) h += 41;
+  } else if (activeCategory === 'email') {
+    h = 400;
+    if (count >= 1) h += 41;
+  } else if (activeCategory === 'number') {
+    h = numType === 'decimal' ? 650 : 580;
+    if (count >= 1) h += 41;
+  } else if (activeCategory === 'lorem') {
+    h = 380;
+    if (count >= 1) h += 41;
+  } else {
+    h = 415;
+    if (count >= 1) h += 41;
+  }
+  parent.postMessage({ pluginMessage: { type: 'resize', height: h } }, '*');
+}
+
+// ─── Navigation ───────────────────────────────────────────────────────────────
+const navContainer = document.getElementById('navContainer');
+
+function navigateTo(cat) {
+  activeCategory = cat;
+  onHomeScreen   = false;
+
+  document.getElementById('panelDatetime').classList.toggle('hidden', cat !== 'datetime');
+  document.getElementById('panelUsername').classList.toggle('hidden', cat !== 'username');
+  document.getElementById('panelName').classList.toggle('hidden', cat !== 'name');
+  document.getElementById('panelAddress').classList.toggle('hidden', cat !== 'address');
+  document.getElementById('panelEmail').classList.toggle('hidden', cat !== 'email');
+  document.getElementById('panelPhone').classList.toggle('hidden', cat !== 'phone');
+  document.getElementById('panelNumber').classList.toggle('hidden', cat !== 'number');
+  document.getElementById('panelLorem').classList.toggle('hidden', cat !== 'lorem');
+  document.getElementById('detailTitle').textContent = CAT_NAMES[cat];
+
+  updateUI();          // sets sizes + previews
+  resizeDetail();      // resize before slide so content isn't clipped mid-animation
+
+  requestAnimationFrame(() => navContainer.classList.add('at-detail'));
+}
+
+function navigateBack() {
+  onHomeScreen = true;
+  navContainer.classList.remove('at-detail');
+  // Shrink window after slide completes so the shrink doesn't clip the animation
+  setTimeout(resizeHome, 270);
+}
+
+// ─── Back button ──────────────────────────────────────────────────────────────
+document.getElementById('btnBack').addEventListener('click', navigateBack);
+
+// ─── Category list clicks ─────────────────────────────────────────────────────
+document.querySelectorAll('.cat-item[data-cat]').forEach(item => {
+  item.addEventListener('click', () => navigateTo(item.dataset.cat));
+});
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+const noResults = document.getElementById('noResults');
+document.getElementById('searchInput').addEventListener('input', function () {
+  const q = this.value.toLowerCase().trim();
+  let visible = 0;
+  document.querySelectorAll('.cat-item').forEach(item => {
+    const hay = (item.dataset.name || '') + ' ' + (item.querySelector('.cat-name').textContent || '');
+    const show = !q || hay.toLowerCase().includes(q);
+    item.classList.toggle('no-match', !show);
+    if (show) visible++;
+  });
+  noResults.classList.toggle('visible', visible === 0);
+});
+
+// ─── Leading zeros toggles ────────────────────────────────────────────────────
+document.getElementById('btnPadOn').addEventListener('click', () => {
+  datePadZeros = true;
+  document.getElementById('btnPadOn').classList.add('active');
+  document.getElementById('btnPadOff').classList.remove('active');
+  updateUI();
+});
+document.getElementById('btnPadOff').addEventListener('click', () => {
+  datePadZeros = false;
+  document.getElementById('btnPadOff').classList.add('active');
+  document.getElementById('btnPadOn').classList.remove('active');
+  updateUI();
+});
+document.getElementById('btnTimePadOn').addEventListener('click', () => {
+  timePadZeros = true;
+  document.getElementById('btnTimePadOn').classList.add('active');
+  document.getElementById('btnTimePadOff').classList.remove('active');
+  updateUI();
+});
+document.getElementById('btnTimePadOff').addEventListener('click', () => {
+  timePadZeros = false;
+  document.getElementById('btnTimePadOff').classList.add('active');
+  document.getElementById('btnTimePadOn').classList.remove('active');
+  updateUI();
+});
+
+// ─── Clock toggle ─────────────────────────────────────────────────────────────
+const btn24hEl  = document.getElementById('btn24h');
+const btnAmpmEl = document.getElementById('btnAmpm');
+const ampmChip  = document.getElementById('ampmChip');
+function setClockMode(m24) {
+  is24h = m24;
+  btn24hEl.classList.toggle('active',   m24);
+  btnAmpmEl.classList.toggle('active', !m24);
+  ampmChip.classList.toggle('disabled', m24);
+  updateUI();
+}
+btn24hEl.addEventListener('click',  () => setClockMode(true));
+btnAmpmEl.addEventListener('click', () => setClockMode(false));
+
+// ─── Order toggle ─────────────────────────────────────────────────────────────
+document.getElementById('btnAsc').addEventListener('click', () => {
+  isAscending = true;
+  document.getElementById('btnAsc').classList.add('active');
+  document.getElementById('btnDesc').classList.remove('active');
+  updateUI();
+});
+document.getElementById('btnDesc').addEventListener('click', () => {
+  isAscending = false;
+  document.getElementById('btnDesc').classList.add('active');
+  document.getElementById('btnAsc').classList.remove('active');
+  updateUI();
+});
+
+// ─── Phone controls ───────────────────────────────────────────────────────────
+const PHONE_BTNS = ['btnPhoneParens','btnPhoneDashes','btnPhoneDots','btnPhonePlain'];
+const PHONE_FMTS = { btnPhoneParens:'parens', btnPhoneDashes:'dashes', btnPhoneDots:'dots', btnPhonePlain:'plain' };
+PHONE_BTNS.forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    phoneFormat = PHONE_FMTS[id];
+    PHONE_BTNS.forEach(bid => document.getElementById(bid).classList.toggle('active', bid === id));
+    updateUI();
+  });
+});
+document.getElementById('phonePrefixInput').addEventListener('input', updateUI);
+
+// ─── Number controls ─────────────────────────────────────────────────────────
+// Mode toggle
+document.getElementById('btnNumDigitsMode').addEventListener('click', () => {
+  numMode = 'digits';
+  document.getElementById('btnNumDigitsMode').classList.add('active');
+  document.getElementById('btnNumRangeMode').classList.remove('active');
+  document.getElementById('numDigitsSection').classList.remove('hidden');
+  document.getElementById('numRangeSection').classList.add('hidden');
+  updateUI();
+});
+document.getElementById('btnNumRangeMode').addEventListener('click', () => {
+  numMode = 'range';
+  document.getElementById('btnNumRangeMode').classList.add('active');
+  document.getElementById('btnNumDigitsMode').classList.remove('active');
+  document.getElementById('numRangeSection').classList.remove('hidden');
+  document.getElementById('numDigitsSection').classList.add('hidden');
+  updateUI();
+});
+
+// Digit length stepper
+const numDigitsDisplay = document.getElementById('numDigitsDisplay');
+const btnNumDigitsDec  = document.getElementById('btnNumDigitsDec');
+const btnNumDigitsInc  = document.getElementById('btnNumDigitsInc');
+function syncNumDigits() {
+  numDigitsDisplay.textContent = numDigits;
+  btnNumDigitsDec.disabled = numDigits <= 1;
+  btnNumDigitsInc.disabled = numDigits >= 12;
+}
+btnNumDigitsDec.addEventListener('click', () => { if (numDigits > 1)  { numDigits--; syncNumDigits(); updateUI(); } });
+btnNumDigitsInc.addEventListener('click', () => { if (numDigits < 12) { numDigits++; syncNumDigits(); updateUI(); } });
+
+// Range inputs
+document.getElementById('numMin').addEventListener('input', updateUI);
+document.getElementById('numMax').addEventListener('input', updateUI);
+
+// Prefix / Suffix
+document.getElementById('numPrefixInput').addEventListener('input', updateUI);
+document.getElementById('numSuffixInput').addEventListener('input', updateUI);
+
+// Whole / Decimal toggle
+document.getElementById('btnNumWhole').addEventListener('click', () => {
+  numType = 'whole';
+  document.getElementById('btnNumWhole').classList.add('active');
+  document.getElementById('btnNumDecimal').classList.remove('active');
+  document.getElementById('numDecimalSection').classList.add('hidden');
+  updateUI();
+});
+document.getElementById('btnNumDecimal').addEventListener('click', () => {
+  numType = 'decimal';
+  document.getElementById('btnNumDecimal').classList.add('active');
+  document.getElementById('btnNumWhole').classList.remove('active');
+  document.getElementById('numDecimalSection').classList.remove('hidden');
+  updateUI();
+});
+
+// Thousands separator toggle
+document.getElementById('btnNumCommasOn').addEventListener('click', () => {
+  numCommas = true;
+  document.getElementById('btnNumCommasOn').classList.add('active');
+  document.getElementById('btnNumCommasOff').classList.remove('active');
+  updateUI();
+});
+document.getElementById('btnNumCommasOff').addEventListener('click', () => {
+  numCommas = false;
+  document.getElementById('btnNumCommasOff').classList.add('active');
+  document.getElementById('btnNumCommasOn').classList.remove('active');
+  updateUI();
+});
+
+// Order toggle
+function syncNumOrder() {
+  document.getElementById('btnNumOrderRandom').classList.toggle('active', numOrder === 'random');
+  document.getElementById('btnNumOrderAsc').classList.toggle('active',    numOrder === 'ascending');
+  document.getElementById('btnNumOrderDesc').classList.toggle('active',   numOrder === 'descending');
+}
+document.getElementById('btnNumOrderRandom').addEventListener('click', () => { numOrder = 'random';     syncNumOrder(); updateUI(); });
+document.getElementById('btnNumOrderAsc').addEventListener('click',    () => { numOrder = 'ascending';  syncNumOrder(); updateUI(); });
+document.getElementById('btnNumOrderDesc').addEventListener('click',   () => { numOrder = 'descending'; syncNumOrder(); updateUI(); });
+
+// Decimal places stepper
+const decPlacesDisplay = document.getElementById('decPlacesDisplay');
+const btnDecPlacesDec  = document.getElementById('btnDecPlacesDec');
+const btnDecPlacesInc  = document.getElementById('btnDecPlacesInc');
+function syncDecPlaces() {
+  decPlacesDisplay.textContent = numDecimals;
+  btnDecPlacesDec.disabled = numDecimals <= 0;
+  btnDecPlacesInc.disabled = numDecimals >= 6;
+}
+btnDecPlacesDec.addEventListener('click', () => { if (numDecimals > 0) { numDecimals--; syncDecPlaces(); updateUI(); } });
+btnDecPlacesInc.addEventListener('click', () => { if (numDecimals < 6) { numDecimals++; syncDecPlaces(); updateUI(); } });
+
+// ─── Email name format toggle ─────────────────────────────────────────────────
+const EMAIL_FMT_BTNS = ['btnEmailRandom','btnEmailFirst','btnEmailLast','btnEmailCombined'];
+const EMAIL_FMT_MAP  = { btnEmailRandom:'random', btnEmailFirst:'first', btnEmailLast:'last', btnEmailCombined:'combined' };
+EMAIL_FMT_BTNS.forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    emailNameFormat = EMAIL_FMT_MAP[id];
+    EMAIL_FMT_BTNS.forEach(bid => document.getElementById(bid).classList.toggle('active', bid === id));
+    updateUI();
+  });
+});
+
+// ─── Email domain input ───────────────────────────────────────────────────────
+document.getElementById('emailDomain').addEventListener('input', updateUI);
+
+// ─── Address part toggle ──────────────────────────────────────────────────────
+const ADDR_BTNS = ['btnAddrFull','btnAddrStreet','btnAddrCity','btnAddrState','btnAddrZip'];
+const ADDR_PARTS = { btnAddrFull:'full', btnAddrStreet:'street', btnAddrCity:'city', btnAddrState:'state', btnAddrZip:'zip' };
+ADDR_BTNS.forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    addressPart = ADDR_PARTS[id];
+    ADDR_BTNS.forEach(bid => document.getElementById(bid).classList.toggle('active', bid === id));
+    updateUI();
+  });
+});
+
+// ─── Name part toggle ─────────────────────────────────────────────────────────
+[['btnFirst','first'], ['btnLast','last'], ['btnBoth','both']].forEach(([id, part]) => {
+  document.getElementById(id).addEventListener('click', () => {
+    namePart = part;
+    ['btnFirst','btnLast','btnBoth'].forEach(bid =>
+      document.getElementById(bid).classList.toggle('active', bid === id)
+    );
+    updateUI();
+  });
+});
+
+// ─── Name gender toggle ───────────────────────────────────────────────────────
+[['btnGenderMix','mix'], ['btnGenderMale','male'], ['btnGenderFemale','female']].forEach(([id, gender]) => {
+  document.getElementById(id).addEventListener('click', () => {
+    nameGender = gender;
+    ['btnGenderMix','btnGenderMale','btnGenderFemale'].forEach(bid =>
+      document.getElementById(bid).classList.toggle('active', bid === id)
+    );
+    updateUI();
+  });
+});
+
+// ─── Spread ───────────────────────────────────────────────────────────────────
+function getSpreadDays() {
+  const n = Math.max(1, Math.min(10, parseInt(document.getElementById('spreadNum').value, 10) || 1));
+  const unit = document.getElementById('spreadUnit').value;
+  return n * ({ days: 1, weeks: 7, months: 30, years: 365 }[unit] || 1);
+}
+document.getElementById('spreadNum').addEventListener('input', updateUI);
+document.getElementById('spreadUnit').addEventListener('change', updateUI);
+
+// ─── Token chips ──────────────────────────────────────────────────────────────
+const dateFmtEl = document.getElementById('dateFmt');
+const timeFmtEl = document.getElementById('timeFmt');
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const input = document.getElementById(chip.dataset.target);
+    const s = input.selectionStart ?? input.value.length;
+    const e = input.selectionEnd   ?? input.value.length;
+    input.value = input.value.slice(0, s) + chip.dataset.token + input.value.slice(e);
+    input.selectionStart = input.selectionEnd = s + chip.dataset.token.length;
+    input.focus();
+    if (chip.dataset.target === 'usernameFmt') { syncLen(); updateCountHint(); }
+    updateUI();
+  });
+});
+dateFmtEl.addEventListener('input', updateUI);
+timeFmtEl.addEventListener('input', updateUI);
+
+const usernameFmtEl = document.getElementById('usernameFmt');
+const countHintEl   = document.getElementById('countHint');
+function updateCountHint() {
+  const fmt   = usernameFmtEl.value;
+  const upper = [...fmt].filter(c => c === 'A').length;
+  const lower = [...fmt].filter(c => c === 'a').length;
+  const nums  = [...fmt].filter(c => c === '#').length;
+  const total = upper + lower + nums;
+  if (total === 0) { countHintEl.textContent = 'No random characters'; return; }
+  const parts = [];
+  if (upper) parts.push(`${upper} uppercase`);
+  if (lower) parts.push(`${lower} lowercase`);
+  if (nums)  parts.push(`${nums} number${nums > 1 ? 's' : ''}`);
+  countHintEl.textContent = parts.join(' + ');
+}
+usernameFmtEl.addEventListener('input', () => { syncLen(); updateCountHint(); updateUI(); });
+
+// ─── Username length stepper ──────────────────────────────────────────────────
+const lenDisplay = document.getElementById('lenDisplay');
+const btnLenDec  = document.getElementById('btnLenDec');
+const btnLenInc  = document.getElementById('btnLenInc');
+function syncLen() {
+  const total = countRandom(usernameFmtEl ? usernameFmtEl.value : '');
+  lenDisplay.textContent = total;
+  btnLenDec.disabled = total <= 0;
+  btnLenInc.disabled = total >= MAX_LEN;
+}
+btnLenDec.addEventListener('click', () => {
+  const fmt = usernameFmtEl.value;
+  for (let i = fmt.length - 1; i >= 0; i--) {
+    if (fmt[i] === 'a' || fmt[i] === 'A' || fmt[i] === '#') {
+      usernameFmtEl.value = fmt.slice(0, i) + fmt.slice(i + 1);
+      syncLen(); updateCountHint(); updateUI();
+      return;
+    }
+  }
+});
+btnLenInc.addEventListener('click', () => {
+  const fmt = usernameFmtEl.value;
+  if (countRandom(fmt) >= MAX_LEN) return;
+  usernameFmtEl.value = fmt + 'A';
+  syncLen(); updateCountHint(); updateUI();
+});
+
+// ─── Lorem Ipsum controls ─────────────────────────────────────────────────────
+const loremCountDisplay = document.getElementById('loremCountDisplay');
+const btnLoremDec = document.getElementById('btnLoremCountDec');
+const btnLoremInc = document.getElementById('btnLoremCountInc');
+function syncLoremCount() {
+  loremCountDisplay.value = loremCount;
+  btnLoremDec.disabled = loremCount <= LOREM_UNIT_MINS[loremUnit];
+  btnLoremInc.disabled = loremCount >= LOREM_UNIT_MAXES[loremUnit];
+}
+btnLoremDec.addEventListener('click', () => {
+  if (loremCount > LOREM_UNIT_MINS[loremUnit]) { loremCount--; syncLoremCount(); updateUI(); }
+});
+btnLoremInc.addEventListener('click', () => {
+  if (loremCount < LOREM_UNIT_MAXES[loremUnit]) { loremCount++; syncLoremCount(); updateUI(); }
+});
+loremCountDisplay.addEventListener('input', () => {
+  const v = parseInt(loremCountDisplay.value, 10);
+  if (!isNaN(v) && v > 0) {
+    loremCount = v;
+    btnLoremDec.disabled = loremCount <= LOREM_UNIT_MINS[loremUnit];
+    btnLoremInc.disabled = loremCount >= LOREM_UNIT_MAXES[loremUnit];
+    updateUI();
+  }
+});
+loremCountDisplay.addEventListener('blur', () => {
+  loremCount = Math.max(LOREM_UNIT_MINS[loremUnit], Math.min(LOREM_UNIT_MAXES[loremUnit], parseInt(loremCountDisplay.value, 10) || LOREM_UNIT_DEFAULTS[loremUnit]));
+  syncLoremCount();
+  updateUI();
+});
+
+const LOREM_UNIT_BTNS = ['btnLoremChars','btnLoremWords','btnLoremSents','btnLoremParas'];
+const LOREM_UNIT_MAP  = { btnLoremChars:'characters', btnLoremWords:'words', btnLoremSents:'sentences', btnLoremParas:'paragraphs' };
+LOREM_UNIT_BTNS.forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    loremUnit  = LOREM_UNIT_MAP[id];
+    loremCount = LOREM_UNIT_DEFAULTS[loremUnit];
+    LOREM_UNIT_BTNS.forEach(bid => document.getElementById(bid).classList.toggle('active', bid === id));
+    syncLoremCount();
+    updateUI();
+  });
+});
+
+// Live tick for datetime seconds
+setInterval(() => { if (!onHomeScreen && activeCategory === 'datetime' && selectedNodeIds.length <= 1) renderPreview(); }, 1000);
+
+// ─── Insert / Replace ─────────────────────────────────────────────────────────
+btnInsert.addEventListener('click', () => {
+  const text = buildTexts(1)[0];
+  if (!text) return;
+  parent.postMessage({ pluginMessage: { type: 'insert-text', text } }, '*');
+});
+btnReplace.addEventListener('click', () => {
+  const count = selectedNodeIds.length;
+  if (!count) return;
+  const texts = buildTexts(count);
+  parent.postMessage({ pluginMessage: { type: 'replace-text', replacements: selectedNodeIds.map((nodeId, i) => ({ nodeId, text: texts[i] })) } }, '*');
+});
+
+// ─── Plugin messages ──────────────────────────────────────────────────────────
+window.onmessage = ({ data: { pluginMessage: msg } = {} }) => {
+  if (!msg) return;
+  if (msg.type === 'selection-changed') { selectedNodeIds = msg.nodeIds; updateUI(); }
+  if (msg.type === 'replaced') showToast(msg.count === 1 ? 'Text replaced' : `${msg.count} layers replaced`);
+  if (msg.type === 'inserted') showToast('Text inserted');
+  if (msg.type === 'error')    showToast(msg.message, true);
+};
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer;
+const toastEl = document.getElementById('toast');
+function showToast(text, isError = false) {
+  clearTimeout(toastTimer);
+  toastEl.textContent = text;
+  toastEl.style.background = isError ? '#f24822' : '#1e1e1e';
+  toastEl.classList.add('show');
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+
+// ─── Drag-to-resize ───────────────────────────────────────────────────────────
+let _resizing = false, _resizeStartY = 0, _resizeStartH = 0;
+document.getElementById('resizeHandle').addEventListener('mousedown', e => {
+  _resizing    = true;
+  _resizeStartY = e.screenY;
+  _resizeStartH = window.innerHeight;
+  e.preventDefault();
+});
+document.addEventListener('mousemove', e => {
+  if (!_resizing) return;
+  const h = Math.max(200, Math.round(_resizeStartH + (e.screenY - _resizeStartY)));
+  parent.postMessage({ pluginMessage: { type: 'resize', height: h } }, '*');
+});
+document.addEventListener('mouseup', () => { _resizing = false; });
+
+// ─── Category drag-to-reorder ─────────────────────────────────────────────────
+(function () {
+  const catList = document.getElementById('catList');
+  let dragSrc = null;
+
+  document.querySelectorAll('.cat-item[data-cat]').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      dragSrc = item;
+      e.dataTransfer.effectAllowed = 'move';
+      requestAnimationFrame(() => item.classList.add('dragging'));
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      catList.querySelectorAll('.cat-item').forEach(i => i.classList.remove('drag-over'));
+      dragSrc = null;
+    });
+
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (item !== dragSrc) {
+        catList.querySelectorAll('.cat-item').forEach(i => i.classList.remove('drag-over'));
+        item.classList.add('drag-over');
+      }
+    });
+
+    item.addEventListener('dragleave', e => {
+      if (!item.contains(e.relatedTarget)) item.classList.remove('drag-over');
+    });
+
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrc && dragSrc !== item) {
+        const all = [...catList.querySelectorAll('.cat-item[data-cat]')];
+        if (all.indexOf(dragSrc) < all.indexOf(item)) {
+          catList.insertBefore(dragSrc, item.nextElementSibling);
+        } else {
+          catList.insertBefore(dragSrc, item);
+        }
+      }
+      item.classList.remove('drag-over');
+    });
+  });
+
+  // Prevent handle clicks from triggering navigation
+  document.querySelectorAll('.drag-handle').forEach(h => {
+    h.addEventListener('click', e => e.stopPropagation());
+  });
+}());
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+setClockMode(true);
+syncLen();
+updateCountHint();
+syncNumDigits();
+syncDecPlaces();
+syncLoremCount();
+updateUI();
+resizeHome();
+</script>
+</body>
+</html>
