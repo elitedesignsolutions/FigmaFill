@@ -28,7 +28,7 @@ var __plugin = (() => {
   // src/code.ts
   var require_code = __commonJS({
     "src/code.ts"(exports) {
-      figma.showUI(__html__, { width: 340, height: 490, title: "Placement Text" });
+      figma.showUI(__html__, { width: 340, height: 490, title: "FigmaFill" });
       sendSelection();
       figma.on("selectionchange", sendSelection);
       function getTextNodes() {

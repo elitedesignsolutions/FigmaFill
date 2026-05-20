@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Placement Text</title>
+<title>FigmaFill</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -40,7 +40,7 @@
     }
   }
 
-  body { font-family: "Inter", system-ui, -apple-system, sans-serif; font-size: 12px; color: var(--text); background: var(--bg); overflow: hidden; }
+  body { font-family: "Inter", system-ui, -apple-system, sans-serif; font-size: 12px; color: var(--text); background: var(--bg); overflow-x: hidden; overflow-y: hidden; }
 
   /* ─── Navigation container ──────────────────────────── */
   #navContainer {
@@ -50,6 +50,29 @@
   }
   #navContainer.at-detail { transform: translateX(-340px); }
   .screen { width: 340px; flex-shrink: 0; }
+
+  /* ─── Plugin header (icon + name) ──────────────────── */
+  .plugin-header {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 12px 14px 11px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .plugin-header img {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    display: block;
+  }
+  .plugin-header-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
 
   /* ─── HOME: Search ──────────────────────────────────── */
   .search-wrap {
@@ -81,10 +104,10 @@
   #searchInput::placeholder { color: var(--text-3); }
 
   /* ─── HOME: layout ─────────────────────────────────── */
-  #screenHome { display: flex; flex-direction: column; height: 100vh; }
+  #screenHome { display: flex; flex-direction: column; }
 
   /* ─── HOME: Category list ───────────────────────────── */
-  #catList { display: flex; flex-direction: column; overflow-y: auto; flex: 1; }
+  #catList { display: flex; flex-direction: column; overflow-y: auto; }
   #catList::-webkit-scrollbar { width: 4px; }
   #catList::-webkit-scrollbar-track { background: transparent; }
   #catList::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -139,7 +162,7 @@
   .no-results.visible { display: block; }
 
   /* ─── DETAIL: layout ───────────────────────────────── */
-  #screenDetail { display: flex; flex-direction: column; height: 100vh; }
+  #screenDetail { display: flex; flex-direction: column; }
 
   /* ─── DETAIL: Header ────────────────────────────────── */
   .detail-header {
@@ -165,7 +188,7 @@
   .detail-title { font-size: 13px; font-weight: 600; color: var(--text); }
 
   /* ─── DETAIL: Body ──────────────────────────────────── */
-  .body { padding: 14px; display: flex; flex-direction: column; gap: 13px; overflow-y: auto; flex: 1; }
+  .body { padding: 14px; display: flex; flex-direction: column; gap: 13px; overflow-y: auto; }
   .panel { display: flex; flex-direction: column; gap: 13px; }
 
   /* ─── Field group ───────────────────────────────────── */
@@ -237,7 +260,19 @@
   .divider { height: 1px; background: var(--border); margin: 0 -14px; }
 
   /* ─── Preview ───────────────────────────────────────── */
-  .preview-box { background: var(--preview-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; min-height: 40px; }
+  .preview-box {
+    background: var(--preview-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    min-height: 40px;
+    /* 10 lines × (13px × 1.65 line-height) + 10px top + 10px bottom padding */
+    max-height: 235px;
+    overflow-y: auto;
+  }
+  .preview-box::-webkit-scrollbar { width: 4px; }
+  .preview-box::-webkit-scrollbar-track { background: transparent; }
+  .preview-box::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   .preview-line { font-size: 13px; color: var(--text); line-height: 1.65; }
   .preview-line.muted { color: var(--text-3); font-style: italic; font-size: 12px; }
   .preview-more { font-size: 11px; color: var(--text-3); margin-top: 2px; }
@@ -287,6 +322,8 @@
        SCREEN 1 — HOME
   ══════════════════════════════════════════════════ -->
   <div id="screenHome" class="screen">
+
+  
 
     <!-- Search -->
     <div class="search-wrap">
@@ -471,7 +508,7 @@
         <div class="field-group">
           <div class="field-label">Time Format</div>
           <input id="timeFmt" class="text-input" type="text"
-                 value="HH:MM:SS" placeholder="e.g. HH:MM — leave blank to omit"
+                 value="HH:MM" placeholder="e.g. HH:MM — leave blank to omit"
                  spellcheck="false" autocomplete="off" />
           <div class="chips">
             <span class="chip" data-target="timeFmt" data-token="HH">HH</span>
@@ -1103,43 +1140,20 @@ function updateUI() {
   if (!onHomeScreen) resizeDetail();
 }
 
-// ─── Window resize ────────────────────────────────────────────────────────────
-const HOME_H = 400; // search(56) + ~5.5 visible items — list scrolls for the rest
-
-function resizeHome() {
-  parent.postMessage({ pluginMessage: { type: 'resize', height: HOME_H } }, '*');
-}
-function resizeDetail() {
-  const count = selectedNodeIds.length;
-  let h;
-  if (activeCategory === 'datetime') {
-    h = 715;
-    if (count >= 2) h += 70; // order section
-    if (count >= 1) h += 41; // replace button
-  } else if (activeCategory === 'name') {
-    h = 380;
-    if (count >= 1) h += 41;
-  } else if (activeCategory === 'address') {
-    h = 365;
-    if (count >= 1) h += 41;
-  } else if (activeCategory === 'phone') {
-    h = 370;
-    if (count >= 1) h += 41;
-  } else if (activeCategory === 'email') {
-    h = 400;
-    if (count >= 1) h += 41;
-  } else if (activeCategory === 'number') {
-    h = numType === 'decimal' ? 650 : 580;
-    if (count >= 1) h += 41;
-  } else if (activeCategory === 'lorem') {
-    h = 380;
-    if (count >= 1) h += 41;
-  } else {
-    h = 415;
-    if (count >= 1) h += 41;
-  }
+// ─── Resize ────────────────────────────────────────────────────────────────────
+function resizePlugin() {
+  const activeEl = onHomeScreen
+    ? document.getElementById('screenHome')
+    : document.getElementById('screenDetail');
+  const contentH = activeEl.scrollHeight;
+  const maxH     = Math.floor(window.screen.height * 0.9);
+  const h        = Math.min(contentH, maxH);
+  document.body.style.overflowY = contentH > maxH ? 'auto' : 'hidden';
   parent.postMessage({ pluginMessage: { type: 'resize', height: h } }, '*');
 }
+// Legacy aliases so all existing call-sites keep working
+function resizeHome()   { resizePlugin(); }
+function resizeDetail() { resizePlugin(); }
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 const navContainer = document.getElementById('navContainer');
@@ -1556,7 +1570,10 @@ document.getElementById('resizeHandle').addEventListener('mousedown', e => {
 });
 document.addEventListener('mousemove', e => {
   if (!_resizing) return;
-  const h = Math.max(200, Math.round(_resizeStartH + (e.screenY - _resizeStartY)));
+  const h = Math.min(
+    Math.max(200, Math.round(_resizeStartH + (e.screenY - _resizeStartY))),
+    Math.floor(window.screen.height * 0.9)
+  );
   parent.postMessage({ pluginMessage: { type: 'resize', height: h } }, '*');
 });
 document.addEventListener('mouseup', () => { _resizing = false; });

@@ -1,6 +1,6 @@
 /// <reference types="@figma/plugin-typings" />
 
-figma.showUI(__html__, { width: 340, height: 490, title: "Placement Text" });
+figma.showUI(__html__, { width: 340, height: 490, title: "FigmaFill" });
 
 // Send selection immediately on open, then on every change.
 sendSelection();
